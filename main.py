@@ -4,14 +4,10 @@ import datetime
 import os
 
 # ===============================
-# 텔레그램 채널 아이디
 CHAT_ID = "@newsnissue"
-
-# GitHub Secrets에 저장된 봇 토큰
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 # ===============================
 
-# 네이버 뉴스 '많이 본 뉴스' RSS 주소 모음
 MEDIA_RSS = {
     "연합뉴스": "https://rss.naver.com/newspaper/001.xml",
     "YTN": "https://rss.naver.com/newspaper/052.xml",
@@ -36,31 +32,50 @@ MEDIA_RSS = {
     "헬스조선": "https://rss.naver.com/newspaper/346.xml"
 }
 
-# 한국 시간 기준
+UA_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; DYNewsBot/1.0; +https://github.com/)",
+    "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
+}
+
+def get_top_entry(url: str):
+    """네이버 RSS를 UA 넣어 받아서 첫 기사(entry 0)를 반환"""
+    try:
+        r = requests.get(url, headers=UA_HEADERS, timeout=15)
+        r.raise_for_status()
+        feed = feedparser.parse(r.content)
+        if feed.entries:
+            return feed.entries[0]
+        return None
+    except Exception:
+        return None
+
+# 한국 시간
 now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 date_str = now.strftime("%m월 %d일")
 hour_str = now.strftime("%p %I시").replace("AM", "오전").replace("PM", "오후")
 
-# 헤드라인 문구
-text = f"{date_str} {hour_str}\n언론사 주요 뉴스 헤드라인\n\n"
+text_lines = [f"{date_str} {hour_str}", "언론사 주요 뉴스 헤드라인", ""]
 
-# 각 언론사별 1위 기사 추출
 for media, url in MEDIA_RSS.items():
-    try:
-        feed = feedparser.parse(url)
-        if not feed.entries:
-            continue
-        entry = feed.entries[0]
+    entry = get_top_entry(url)
+    if entry:
         title = entry.title.strip()
         link = entry.link
-        text += f"[{media}]\n{title}\n{link}\n\n"
-    except Exception as e:
-        text += f"[{media}]\n⚠️ 뉴스 불러오기 오류 ({e})\n\n"
+        text_lines.append(f"[{media}]")
+        text_lines.append(title)
+        text_lines.append(link)
+        text_lines.append("")  # 빈 줄
+    else:
+        # 실패 시에도 어디서 빵꾸났는지 한 줄 남김(원하면 지워도 됨)
+        text_lines.append(f"[{media}]")
+        text_lines.append("⚠️ 헤드라인을 가져오지 못했습니다.")
+        text_lines.append("")
+
+text = "\n".join(text_lines)
 
 # 텔레그램 전송
-response = requests.get(
+resp = requests.get(
     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
     params={"chat_id": CHAT_ID, "text": text}
 )
-
-print(response.text)
+print(resp.text)
