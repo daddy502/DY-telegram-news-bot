@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 # GitHub Secrets에서 봇 정보 가져오기
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-CHANNEL_ID = os.environ.get('TELEGRAM_CHANNEL_ID')
+CHANNEL_ID = "@newsnissue"
 
 # 1. 회원님이 요청한 21개 언론사 목록
 TARGET_PRESS = [
