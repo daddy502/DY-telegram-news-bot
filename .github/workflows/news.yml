@@ -1,19 +1,33 @@
-name: Send Naver Top News
+name: Send Naver News
 
 on:
+  workflow_dispatch: # 수동으로 실행할 수 있게 함
   schedule:
-    # UTC 기준 0시(=한국 9시), 4시(=한국 13시), 8시(=한국 17시)
-    - cron: "0 0,4,8 * * *"
-  workflow_dispatch:
+    # 한국 시간(KST) 기준 오전 9시, 오후 1시, 오후 5시에 실행
+    # 깃허브는 UTC 기준이므로 KST-9시간으로 설정
+    # (9시 KST = 00:00 UTC, 13시 KST = 04:00 UTC, 17시 KST = 08:00 UTC)
+    - cron: '0 0,4,8 * * *'
 
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v3
-      - name: Run Python
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' # 파이썬 버전 설정
+          
+      - name: Install dependencies
         run: |
-          pip install requests feedparser
-          python main.py
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Run script
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+        run: python main.py
