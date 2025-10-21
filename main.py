@@ -18,8 +18,8 @@ RSS_URL = "https://www.chosun.com/arc/outboundfeeds/rss/category/politics/?outpu
 feed = feedparser.parse(RSS_URL)
 top5 = feed.entries[:5]  # 최신 5개 기사만 가져오기
 
-# 3. 메시지 만들기
-now = datetime.datetime.now()
+# 3. 메시지 만들기 (한국 시간으로)
+now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
 today = now.strftime("%Y-%m-%d %H:%M")
 text = f"🗞️ {today} 조선일보 정치면 주요뉴스\n\n"
 for i, entry in enumerate(top5, 1):
