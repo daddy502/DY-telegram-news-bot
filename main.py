@@ -7,9 +7,9 @@ import html
 from datetime import datetime, timedelta
 
 # ===============================
-# GitHub Secrets에서 봇 정보 가져오기
+# GitHub Secrets에서 봇 토큰만 가져오고, 채널 아이디는 직접 입력
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-CHANNEL_ID = os.environ.get('TELEGRAM_CHANNEL_ID')
+CHANNEL_ID = "@newsnissue"  # 채널 아이디를 직접 입력 ✅
 # ===============================
 
 # 1️⃣ 모니터링 대상 언론사 목록
@@ -59,8 +59,8 @@ def get_news():
 
 async def send_message_async(text):
     """텔레그램으로 메시지를 비동기로 전송합니다."""
-    if not BOT_TOKEN or not CHANNEL_ID:
-        print("❌ TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHANNEL_ID가 설정되지 않았습니다.")
+    if not BOT_TOKEN:
+        print("❌ TELEGRAM_BOT_TOKEN이 설정되지 않았습니다.")
         return
 
     try:
