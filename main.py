@@ -1,81 +1,110 @@
-import requests
-import feedparser
-import datetime
 import os
+import requests
+from bs4 import BeautifulSoup
+import telegram
+import asyncio
+import html # HTML 태그 이스케이프를 위해 추가
 
-# ===============================
-CHAT_ID = "@newsnissue"
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-# ===============================
+# 1. 회원님이 요청한 21개 언론사 목록
+TARGET_PRESS = [
+    "연합뉴스", "YTN", "조선일보", "중앙일보", "동아일보", "국민일보", 
+    "한국일보", "서울신문", "한겨레", "경향신문", "문화일보", "뉴시스", 
+    "뉴스1", "KBS", "MBC", "SBS", "JTBC", "TV조선", "매일경제", 
+    "한국경제", "헬스조선"
+]
 
-MEDIA_RSS = {
-    "연합뉴스": "https://rss.naver.com/newspaper/001.xml",
-    "YTN": "https://rss.naver.com/newspaper/052.xml",
-    "조선일보": "https://rss.naver.com/newspaper/023.xml",
-    "중앙일보": "https://rss.naver.com/newspaper/025.xml",
-    "동아일보": "https://rss.naver.com/newspaper/020.xml",
-    "국민일보": "https://rss.naver.com/newspaper/005.xml",
-    "한국일보": "https://rss.naver.com/newspaper/469.xml",
-    "서울신문": "https://rss.naver.com/newspaper/081.xml",
-    "한겨레": "https://rss.naver.com/newspaper/028.xml",
-    "경향신문": "https://rss.naver.com/newspaper/032.xml",
-    "문화일보": "https://rss.naver.com/newspaper/021.xml",
-    "뉴시스": "https://rss.naver.com/newspaper/003.xml",
-    "뉴스1": "https://rss.naver.com/newspaper/421.xml",
-    "KBS": "https://rss.naver.com/newspaper/056.xml",
-    "MBC": "https://rss.naver.com/newspaper/214.xml",
-    "SBS": "https://rss.naver.com/newspaper/055.xml",
-    "JTBC": "https://rss.naver.com/newspaper/437.xml",
-    "TV조선": "https://rss.naver.com/newspaper/366.xml",
-    "매일경제": "https://rss.naver.com/newspaper/009.xml",
-    "한국경제": "https://rss.naver.com/newspaper/015.xml",
-    "헬스조선": "https://rss.naver.com/newspaper/346.xml"
-}
+# 2. 깃허브 'Secrets'에서 봇 정보 가져오기
+BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+CHANNEL_ID = os.environ.get('TELEGRAM_CHANNEL_ID')
 
-UA_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; DYNewsBot/1.0; +https://github.com/)",
-    "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8",
-}
+# 3. 네이버 뉴스 '가장 많이 본' 페이지 주소
+URL = "https://news.naver.com/main/ranking/popularDay.naver"
 
-def get_top_entry(url: str):
-    """네이버 RSS를 UA 넣어 받아서 첫 기사(entry 0)를 반환"""
+def get_news():
+    """네이버에서 '가장 많이 본 뉴스'를 가져와서 필터링합니다."""
+    headers = {'User-Agent': 'Mozilla/5.0'} # 봇으로 접근하는 것을 숨기기 위함
+    
     try:
-        r = requests.get(url, headers=UA_HEADERS, timeout=15)
-        r.raise_for_status()
-        feed = feedparser.parse(r.content)
-        if feed.entries:
-            return feed.entries[0]
+        response = requests.get(URL, headers=headers)
+        response.raise_for_status() # 오류가 나면 중단
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # '가장 많이 본 뉴스' 목록을 찾습니다.
+        items = soup.select('ul.rankingnews_list > li')
+        
+        found_news = []
+        
+        for item in items:
+            press_tag = item.select_one('span.rankingnews_box_press') # 언론사
+            title_tag = item.select_one('div.list_content > a')      # 기사 제목과 링크
+            
+            if press_tag and title_tag:
+                press_name = press_tag.text.strip()
+                title = title_tag.text.strip()
+                link = title_tag['href']
+                
+                # 4. 가져온 뉴스의 언론사가 우리가 찾는 언론사인지 확인
+                if press_name in TARGET_PRESS:
+                    found_news.append((press_name, title, link))
+                    
+        return found_news
+
+    except Exception as e:
+        print(f"Error scraping news: {e}")
         return None
-    except Exception:
-        return None
 
-# 한국 시간
-now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
-date_str = now.strftime("%m월 %d일")
-hour_str = now.strftime("%p %I시").replace("AM", "오전").replace("PM", "오후")
+async def send_message(text):
+    """텔레그램으로 메시지를 비동기로 전송합니다."""
+    if not BOT_TOKEN or not CHANNEL_ID:
+        print("텔레그램 봇 토큰 또는 채널 ID가 설정되지 않았습니다.")
+        return
+        
+    try:
+        bot = telegram.Bot(token=BOT_TOKEN)
+        # 텔레그램 메시지 길이는 4096자로 제한됩니다.
+        max_length = 4096
+        if len(text) <= max_length:
+            await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode='HTML', disable_web_page_preview=True)
+        else:
+            # 메시지가 너무 길면 나눠서 보냅니다.
+            for i in range(0, len(text), max_length):
+                await bot.send_message(chat_id=CHANNEL_ID, text=text[i:i+max_length], parse_mode='HTML', disable_web_page_preview=True)
+                
+    except Exception as e:
+        print(f"Error sending message: {e}")
 
-text_lines = [f"{date_str} {hour_str}", "언론사 주요 뉴스 헤드라인", ""]
+def format_message(news_list):
+    """텔레그램 메시지 형식을 만듭니다."""
+    if not news_list:
+        return "오늘의 주요 뉴스 중 요청하신 언론사의 기사를 찾지 못했습니다."
+    
+    message = "📰 <b>오늘의 주요 뉴스 (조회수 순)</b> 📰\n\n"
+    
+    # 언론사별로 뉴스를 그룹화합니다.
+    press_groups = {}
+    for press, title, link in news_list:
+        if press not in press_groups:
+            press_groups[press] = []
+        
+        # 제목에 포함된 HTML 특수 문자(<, >)를 변환합니다.
+        title_safe = html.escape(title)
+        press_groups[press].append((title_safe, link))
 
-for media, url in MEDIA_RSS.items():
-    entry = get_top_entry(url)
-    if entry:
-        title = entry.title.strip()
-        link = entry.link
-        text_lines.append(f"[{media}]")
-        text_lines.append(title)
-        text_lines.append(link)
-        text_lines.append("")  # 빈 줄
+    # 5. 보기 좋게 메시지 포맷 만들기 (언론사 순서는 회원님이 요청한 순서대로)
+    for press in TARGET_PRESS:
+        if press in press_groups:
+            message += f"\n<b>[{press}]</b>\n"
+            # 해당 언론사에서 순위에 든 기사를 최대 3개까지만 보여줍니다.
+            for i, (title, link) in enumerate(press_groups[press][:3]): 
+                message += f'- <a href="{link}">{title}</a>\n'
+    
+    return message
+
+if __name__ == "__main__":
+    news = get_news()
+    if news:
+        message = format_message(news)
+        asyncio.run(send_message(message))
     else:
-        # 실패 시에도 어디서 빵꾸났는지 한 줄 남김(원하면 지워도 됨)
-        text_lines.append(f"[{media}]")
-        text_lines.append("⚠️ 헤드라인을 가져오지 못했습니다.")
-        text_lines.append("")
-
-text = "\n".join(text_lines)
-
-# 텔레그램 전송
-resp = requests.get(
-    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-    params={"chat_id": CHAT_ID, "text": text}
-)
-print(resp.text)
+        asyncio.run(send_message("뉴스 수집 중 오류가 발생했습니다."))
