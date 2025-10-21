@@ -1,0 +1,20 @@
+name: Send Chosun Politics News
+
+on:
+  schedule:
+    # UTC 기준 시간. 한국은 +9시간.
+    # 즉, 한국 07시~23시 → UTC 22시~14시
+    - cron: "0 22,0,2,4,6,8,10,12,14 * * *"
+  workflow_dispatch:      # 수동 실행도 가능
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run Python
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: |
+          pip install requests feedparser
+          python main.py
