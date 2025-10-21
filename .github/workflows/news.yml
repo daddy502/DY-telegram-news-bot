@@ -2,9 +2,9 @@ name: Send Naver Ranking Headlines
 
 on:
   schedule:
-    # 한국시간 9시, 13시, 17시 실행 (UTC 기준 0, 4, 8시)
+    # 한국시간 9시, 13시, 17시 (UTC 기준 0, 4, 8시)
     - cron: "0 0,4,8 * * *"
-  workflow_dispatch:  # 수동 실행 가능
+  workflow_dispatch:  # 수동 실행도 가능
 
 jobs:
   run:
@@ -14,7 +14,6 @@ jobs:
       - name: Run News Bot
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
         run: |
-          pip install requests beautifulsoup4 python-telegram-bot==13.15
+          pip install requests beautifulsoup4 python-telegram-bot==20.8
           python main.py
