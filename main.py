@@ -15,7 +15,7 @@ TARGET_PRESS = [
 
 # 2. 깃허브 'Secrets'에서 봇 정보 가져오기
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-CHANNEL_ID = os.environ.get('TELEGRAM_CHANNEL_ID')
+CHANNEL_ID = "@newsnissue"
 
 # 3. 네이버 뉴스 '가장 많이 본' 페이지 주소
 URL = "https://news.naver.com/main/ranking/popularDay.naver"
