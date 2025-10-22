@@ -24,7 +24,7 @@ def save_sent_news(sent_links):
 
 # --- 환경 변수 및 설정 ---
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-CHANNEL_ID = "-1001234567890"   # 👈 여기에 본인 채널 ID 입력하세요
+CHANNEL_ID = "@newsnissue"   # 👈 여기에 본인 채널 ID 입력하세요
 RSS_URL = "https://news.google.com/rss?hl=ko&gl=KR&ceid=KR:ko"
 
 # --- RSS 뉴스 수집 ---
